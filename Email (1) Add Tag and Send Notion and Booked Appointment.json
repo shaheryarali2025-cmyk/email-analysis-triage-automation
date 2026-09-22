@@ -1,0 +1,823 @@
+{
+  "name": "Email (1) Add Tag and Send Notion and Booked Appointment",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "40ccd07a-c75a-4e0d-adfa-cef1e868e15f",
+      "name": "Gmail Trigger - Monitor All Accounts",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        32
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "r4pGJ1Hhbj540yjW",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Email from: {{ $json[\"From\"] }}\nSubject: {{ $json[\"Subject\"] }}\nBody: {{ $json[\"snippet\"] }}\nEmail ID: {{ $json[\"id\"] }}\nThread ID: {{ $json[\"threadId\"] }}\n\nAnalyze this email and return the JSON object exactly as described in the system message.\nRemember: respond with ONLY valid JSON.",
+        "options": {
+          "systemMessage": "=You are an AI email productivity assistant.\n\nYour job:\n- Read the email subject and body.\n- Classify it into a clear category.\n- Decide if a task is needed.\n- Detect if a calendar event is needed.\n- If a meeting is mentioned, extract a clear title and start/end time.\n- Decide if an auto-reply is needed and what type.\n- Return a clean JSON object so that an automation can use it.\n\nYou MUST always respond with ONLY valid JSON. No explanation, no markdown, no extra text.\n\nUse these categories exactly:\n- \"FYI\"\n- \"Action Required\"\n- \"Urgent\"\n- \"For Review\"\n- \"For Approval\"\n- \"Query\"\n- \"Follow-Up\"\n- \"Update\"\n- \"Notification\"\n\nBusiness assumptions:\n- The user is a busy professional managing multiple companies and 5 Gmail accounts.\n- The system will convert your JSON into Google Tasks and Google Calendar events.\n- The system will also send auto-replies for routine or simple messages.\n\nDecide the following fields:\n\n1. category\n   - One of the allowed categories above.\n   - \"Urgent\" for time-sensitive and high-impact emails.\n   - \"Action Required\" if the user must do something but it is not extremely urgent.\n   - \"FYI\" if no action is required and the email is informational only.\n\n2. priority\n   - Integer 1 to 5.\n   - 5 = highest priority, 1 = lowest.\n\n3. needsTask\n   - true if there is any clear action the user should take.\n   - false if it is purely informational.\n\n4. taskTitle\n   - Short and actionable.\n\n5. taskDue\n   - ISO 8601 date string (YYYY-MM-DD) if a clear deadline is mentioned.\n   - If a deadline like \"tomorrow\", \"today\", \"next Monday\" is mentioned, convert it to a concrete date based on the email date.\n   - Otherwise \"\" (empty string).\n\n6. needsCalendarEvent\n   - true if the email clearly talks about a meeting, call, appointment, or scheduled session.\n   - false otherwise.\n\n7. meetingTimeText\n   - Copy the most relevant natural language description of time, date, and duration.\n   - Example: \"Friday at 3:00 PM Pakistan time for 30 minutes\".\n   - If nothing is clear, use \"\".\n\n8. eventTitle\n   - Short calendar-friendly title if needsCalendarEvent is true.\n   - Otherwise \"\".\n\n9. eventStart\n   - ISO 8601 datetime string with timezone, e.g. \"2025-11-29T15:00:00+05:00\".\n   - If you cannot determine a precise time, use \"\".\n\n10. eventEnd\n   - ISO 8601 datetime string with timezone.\n   - If duration is unclear, you may assume 30 or 60 minutes after eventStart.\n   - If you cannot determine it, use \"\".\n\n11. autoReplyNeeded\n   - true if a simple automatic reply is acceptable and useful.\n   - false if the email requires a personal or complex human reply.\n\n12. autoReplyType\n   - One of:\n     - \"acknowledge\"\n     - \"info_request\"\n     - \"scheduling\"\n     - \"\" if no auto-reply should be sent.\n\n13. summary\n   - One sentence summary of the email in plain language.\n\n14. rawActionNotes\n   - A short description of what the user should do, free text that can be used in logs.\n\nIf the email is clearly spam, marketing, or irrelevant, set:\n- category = \"Notification\"\n- priority = 1\n- needsTask = false\n- needsCalendarEvent = false\n- autoReplyNeeded = false\n\nReturn JSON IN EXACTLY THIS SCHEMA:\n\n{\n  \"category\": \"<one of the allowed categories>\",\n  \"priority\": 1,\n  \"needsTask\": true,\n  \"taskTitle\": \"<short title or empty string>\",\n  \"taskDue\": \"<YYYY-MM-DD or empty string>\",\n  \"needsCalendarEvent\": false,\n  \"meetingTimeText\": \"\",\n  \"eventTitle\": \"<short meeting title or empty string>\",\n  \"eventStart\": \"<YYYY-MM-DDTHH:mm:ss±HH:mm or empty string>\",\n  \"eventEnd\": \"<YYYY-MM-DDTHH:mm:ss±HH:mm or empty string>\",\n  \"autoReplyNeeded\": false,\n  \"autoReplyType\": \"\",\n  \"summary\": \"<one sentence>\",\n  \"rawActionNotes\": \"<short free-text notes>\"\n}\n"
+        }
+      },
+      "id": "958849ef-d358-4449-a0df-4504fc817978",
+      "name": "Email Triage AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        656,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "ecbb939e-c77e-42c3-951b-c8b0eadd4fc2",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        256
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "W20mBdocekvtEQc5",
+          "name": "Client API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.id }}"
+      },
+      "id": "c6b7fd12-8ff2-40a7-a2a1-9837df498f22",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Saare items Merge node se\nconst items = $input.all();\nconst result = [];\n\n// Gmail label IDs mapping\n// Ye IDs tumhare Get many labels output se li hui hain\nconst labelMap = {\n  Urgent: 'Label_4230498543484052833',\n  'Action Required': 'Label_9058879928456985247',\n  'For Review': 'Label_7792460728373492648',\n  'For Approval': 'Label_6783114676002759534',\n  'Follow-Up': 'Label_2295556826341389640',\n  FYI: 'Label_2784060120517581890',\n  Notification: 'Label_7264284743449325439',\n  Query: 'Label_6549930859083289872',\n  Update: 'Label_2308846325209700632',\n};\n\nfor (const item of items) {\n  const email = item.json;\n\n  // Agent ka raw output string\n  const rawOutput = email.output || '{}';\n  let triage;\n\n  // Robust JSON parse . agar string me do JSON objects chipke hon to last wala le lo\n  try {\n    triage = JSON.parse(rawOutput);\n  } catch (err) {\n    const matches = rawOutput.match(/{[\\s\\S]*?}/g);\n    if (!matches || matches.length === 0) {\n      throw new Error(\n        'Failed to parse AI output JSON. No valid JSON object found. value: ' + rawOutput,\n      );\n    }\n    const lastJson = matches[matches.length - 1];\n    try {\n      triage = JSON.parse(lastJson);\n    } catch (innerErr) {\n      throw new Error(\n        'Failed to parse AI output JSON after splitting. ' +\n          innerErr.message +\n          ' , value: ' +\n          lastJson,\n      );\n    }\n  }\n\n  const category = triage.category || '';\n  const labels = [];\n\n  // Category se Gmail label ID decide karo\n  if (labelMap[category]) {\n    labels.push(labelMap[category]);\n  }\n\n  result.push({\n    json: {\n      // Gmail se basic info\n      emailId: email.id || email.emailId || null,\n      threadId: email.threadId || null,\n      from: email.From || email.from || null,\n      to: email.To || email.to || null,\n      subject: email.Subject || email.subject || null,\n      snippet: email.snippet || null,\n\n      // Label IDs jo Gmail node ko jayengi\n      labels,\n\n      // Pura triage object plus flat fields\n      triage,\n      category: triage.category || '',\n      priority: triage.priority ?? 1,\n      needsTask: !!triage.needsTask,\n      taskTitle: triage.taskTitle || '',\n      taskDue: triage.taskDue || '',\n      needsCalendarEvent: !!triage.needsCalendarEvent,\n      meetingTimeText: triage.meetingTimeText || '',\n      autoReplyNeeded: !!triage.autoReplyNeeded,\n      autoReplyType: triage.autoReplyType || '',\n      summary: triage.summary || '',\n      rawActionNotes: triage.rawActionNotes || '',\n      eventTitle: triage.eventTitle || '',\n      eventStart: triage.eventStart || '',\n      eventEnd: triage.eventEnd || '',\n\n    },\n  });\n}\n\nreturn result;"
+      },
+      "id": "a9de0069-b929-48ed-8671-6ab5c6a75792",
+      "name": "Extract AI Decisions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.emailId }}",
+        "labelIds": "={{ $json.labels }}"
+      },
+      "id": "85ba5dfa-e470-47fe-a23d-9869a22e28dc",
+      "name": "Apply Labels to Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1616,
+        400
+      ],
+      "webhookId": "7b4b04f7-46d1-47f1-b619-38e02b05fec6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "r4pGJ1Hhbj540yjW",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "00db07494f27f06ae29b2c0cd4a668832ddc3114bc572214126fe7da2d2b50b3@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Meeting Calendar"
+        },
+        "start": "={{ $json.eventStart || $now }}",
+        "end": "={{ $json.eventEnd || $now.plus(1, 'hour') }}",
+        "additionalFields": {
+          "attendees": [
+            "={{\n(() => {\n  const from = $('Gmail Trigger - Monitor All Accounts').item.json.From || '';\n  const m = from.match(/<([^>]+)>/);\n  return m ? m[1].trim() : from.trim();\n})()\n}}"
+          ],
+          "conferenceDataUi": {},
+          "sendUpdates": "all",
+          "summary": "={{\n(() => {\n  // Always read from the Gmail trigger item\n  const emailItem = $('Gmail Trigger - Monitor All Accounts').item.json || {};\n\n  const from = emailItem.From || '';          // e.g. \"Name <email@x.com>\"\n  const subject = emailItem.Subject || 'Meeting';\n\n  let name = '';\n  let email = '';\n\n  if (from) {\n    // Handle \"Name <email@x.com>\" format\n    const m = from.match(/^(.*)<([^>]+)>$/);\n    if (m) {\n      name = (m[1] || '').trim();\n      email = (m[2] || '').trim();\n    } else {\n      // Only email or only name\n      email = from.trim();\n    }\n  }\n\n  const parts = [];\n  if (name) parts.push(name);\n  if (email) parts.push(email);\n  parts.push(subject);   // Always add subject\n\n  return parts.join(' - ');\n})()\n}}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1872,
+        400
+      ],
+      "id": "f3df9c77-6b4a-4a45-9b26-46dfc8cd81b1",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YzKZpR8blXORqFKJ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        976,
+        -128
+      ],
+      "id": "a69efe52-34fc-456f-866c-140ec4e8db49",
+      "name": "Merge 2 Node Gmail & Agent"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4982fcd2-2402-451d-8158-7d0c034e9921",
+              "leftValue": "={{ $json.needsCalendarEvent }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        496
+      ],
+      "id": "eac3740b-2427-4447-82ae-3fd24bb324dc",
+      "name": "IF Node"
+    },
+    {
+      "parameters": {
+        "content": "The yellow block watches your Gmail accounts and sends every new email into the workflow, where the Email Triage AI Agent reads and classifies it.",
+        "height": 704,
+        "width": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -336
+      ],
+      "id": "8fbb7c14-21c1-4013-b649-4f1d6e565748",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "The green block merges the original email with the AI result, then the Extract AI Decisions code prepares clean fields like category, priority, needs CalendarEvent, etc, and the Slack Send a message node posts a summary to your Slack channel with the right priority text.",
+        "height": 752,
+        "width": 336,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        944,
+        -400
+      ],
+      "id": "57dab115-091f-43ec-aaf5-a30eac7791f4",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "The purple block always applies the correct Gmail label to the message, then the IF node checks needs CalendarEvent, if true it creates a Google Calendar event, if false it just stops at “No Operation, do nothing”.",
+        "height": 496,
+        "width": 528,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        288
+      ],
+      "id": "3b95dacd-d4c8-4e17-843a-0179d0a48b53",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.emailId }}",
+        "labelIds": "={{ $json.labels }}"
+      },
+      "id": "16844e24-dc48-4731-87d5-8ba8ee6854dd",
+      "name": "Apply Labels to Email1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1616,
+        576
+      ],
+      "webhookId": "84c38e67-d21a-4af5-99c1-1d06ef8c167e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "r4pGJ1Hhbj540yjW",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.triage.priority }}",
+                    "rightValue": 5,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "6bc81bd4-dc59-415e-be3f-7361385002b2"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fc4ffc03-bedc-4add-91a7-770ba50b3a56",
+                    "leftValue": "={{ $json.triage.priority }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2126f63b-160d-4bb4-bb8c-c2354dae2213",
+                    "leftValue": "={{ $json.triage.priority }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1392,
+        -144
+      ],
+      "id": "3a6f912d-826a-4f97-abbe-eea364b5bf57",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "content": "The purple block always applies the correct Gmail label to the message, then the IF node checks needs CalendarEvent, if true it creates a Google Calendar event, if false it just stops at “No Operation, do nothing”.",
+        "height": 496,
+        "width": 528,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        -288
+      ],
+      "id": "ddd5d02e-a4f5-4f25-872a-2b65468b38a2",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Email (A) High",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Message": "={{ \n  'Category: ' + ($json.category || '') +\n  '\\nSubject: ' + ($json.subject || '(no subject)') +\n  '\\nFrom: ' + ($json.from || '') +\n  '\\nSummary: ' + ($json.summary || '')\n}}"
+          },
+          "matchingColumns": [
+            "Message"
+          ],
+          "schema": [
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1648,
+        -224
+      ],
+      "id": "4efa46e0-3918-4070-9c00-df745f3f0acd",
+      "name": "High Priority Data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1675894220,
+          "mode": "list",
+          "cachedResultName": "Email (A) Medium",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=1675894220"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Message": "={{\n  'Category: ' + ($json.category || '') +\n  '\\nSubject: ' + ($json.subject || '(no subject)') +\n  '\\nFrom: ' + ($json.from || '') +\n  '\\nSummary: ' + ($json.summary || '')\n}}"
+          },
+          "matchingColumns": [
+            "Message"
+          ],
+          "schema": [
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1872,
+        -128
+      ],
+      "id": "0482c858-8358-400c-8746-3036a3cdcaab",
+      "name": "Medium Priority Data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1666695853,
+          "mode": "list",
+          "cachedResultName": "Email (A) Low",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=1666695853"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Message": "={{\n  'Category: ' + ($json.category || '') +\n  '\\nSubject: ' + ($json.subject || '(no subject)') +\n  '\\nFrom: ' + ($json.from || '') +\n  '\\nSummary: ' + ($json.summary || '')\n}}"
+          },
+          "matchingColumns": [
+            "Message"
+          ],
+          "schema": [
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1648,
+        -32
+      ],
+      "id": "7cca3bd5-ac2c-4c13-a6e7-04cd18f5ffce",
+      "name": "Low Priority Data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e7994222-cd04-4619-8c3e-0a8f597f58b6",
+              "leftValue": "={{ ($json.category || '').trim() }}",
+              "rightValue": "Action Required",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        -672
+      ],
+      "id": "3a3b6621-4895-4292-bf17-b31f597cd909",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "2e4c72a6-18bd-80c3-9ebb-f9e51c310362",
+          "mode": "list",
+          "cachedResultName": "Follow up: Email Data",
+          "cachedResultUrl": "https://www.notion.so/2e4c72a618bd80c39ebbf9e51c310362"
+        },
+        "title": "={{$json.taskTitle || $json.subject}}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Priority|multi_select",
+              "multiSelectValue": "={{ $json.priority >= 4 ? \"High\" : $json.priority == 3 ? \"Medium\" : \"Low\" }}"
+            },
+            {
+              "key": "Category|multi_select",
+              "multiSelectValue": "={{ $json.category }}"
+            },
+            {
+              "key": "Status|checkbox"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1728,
+        -784
+      ],
+      "id": "724b4cb0-30d6-437a-a136-d9c7d562eebb",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "CBo1odGmPZdNJdWk",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        -576
+      ],
+      "id": "5dc1fad7-3e9a-4210-9e6a-c2f4ab9fc345",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "content": "The purple block always applies the correct Gmail label to the message, then the IF node checks urgent required category  then send to Notion Database.",
+        "height": 496,
+        "width": 528,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        -864
+      ],
+      "id": "530a54ee-833b-4aa4-864b-d9a2c1b2a980",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger - Monitor All Accounts": {
+      "main": [
+        [
+          {
+            "node": "Email Triage AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge 2 Node Gmail & Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email Triage AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Email Triage AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Triage AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge 2 Node Gmail & Agent",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract AI Decisions": {
+      "main": [
+        [
+          {
+            "node": "IF Node",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Labels to Email": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        []
+      ]
+    },
+    "Merge 2 Node Gmail & Agent": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Decisions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Node": {
+      "main": [
+        [
+          {
+            "node": "Apply Labels to Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply Labels to Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "High Priority Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Medium Priority Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low Priority Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "34a91dbe-c256-48cc-b3cb-38058057d7ed",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00db946854f8670ba1a43e64b16256ebb4a5a382846c7b16ddcfbf737ee9b72b"
+  },
+  "id": "hkF80XqguAuu041q",
+  "tags": []
+}

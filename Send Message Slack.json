@@ -1,0 +1,511 @@
+{
+  "name": "Send Message Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        -48
+      ],
+      "id": "5dc34776-8150-404e-b36c-05b23abed0a3",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all rows from each sheet node\n// Make sure these names match your Google Sheets nodes exactly\nconst highItems = $items('Read High Sheet');\nconst mediumItems = $items('Read Medium Sheet');\nconst lowItems = $items('Read Low Sheet');\n\n// Helper to turn rows into numbered lines\nfunction buildSection(items, title) {\n  if (!items.length) {\n    return `${title}:\\n(no tasks today)\\n`;\n  }\n\n  const lines = items.map((item, index) => {\n    // Column name in your sheets\n    const msg = item.json.Message || item.json.message || '';\n    return `${index + 1}. ${msg}\n    ------------------------------------------------`;\n  });\n\n  return `${title}:\\n` + lines.join('\\n') + '\\n';\n}\n\n// Build three separate texts\nconst highText = buildSection(highItems, 'HIGH PRIORITY');\nconst mediumText = buildSection(mediumItems, 'MEDIUM PRIORITY');\nconst lowText = buildSection(lowItems, 'LOW PRIORITY');\n\n// Return as one item with three fields\nreturn [\n  {\n    json: {\n      highText,\n      mediumText,\n      lowText,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -48
+      ],
+      "id": "8d454a9b-402f-4d2d-8163-e764c93db44b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1666695853,
+          "mode": "list",
+          "cachedResultName": "Email (A) Low",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=1666695853"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        -48
+      ],
+      "id": "98cfd4c5-f930-4593-9c54-67a7b292851f",
+      "name": "Read Low Sheet",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1675894220,
+          "mode": "list",
+          "cachedResultName": "Email (A) Medium",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=1675894220"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        -48
+      ],
+      "id": "5f58f7ee-ea4b-43b6-b9a5-c445b76b96f6",
+      "name": "Read Medium Sheet",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Email (A) High",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1104,
+        -48
+      ],
+      "id": "6f47e972-1448-4ef6-8ea6-aacc2065cc5d",
+      "name": "Read High Sheet",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5d212cd-ee28-4fff-942d-ae59ca901484",
+              "name": "highText",
+              "value": "={{ $json.highText }}",
+              "type": "string"
+            },
+            {
+              "id": "d660e9a6-d4aa-4bd5-812e-065c2dcccb66",
+              "name": "mediumText",
+              "value": "={{ $json.mediumText }}",
+              "type": "string"
+            },
+            {
+              "id": "ef55bb77-ca58-4480-94e4-f7a1cd56e637",
+              "name": "lowText",
+              "value": "={{ $json.lowText }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1520,
+        -48
+      ],
+      "id": "43f28285-bb19-4e7c-8292-92ddc1c52a51",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A0G4XUTFC",
+          "mode": "list",
+          "cachedResultName": "high-priorities"
+        },
+        "messageType": "block",
+        "blocksUi": "={{\n[\n  {\n    \"type\": \"header\",\n    \"text\": { \"type\": \"plain_text\", \"text\": \"HIGH PRIORITY\", \"emoji\": true }\n  },\n  {\n    \"type\": \"context\",\n    \"elements\": [\n      { \"type\": \"mrkdwn\", \"text\": \"*Date:* \" + $now.format(\"YYYY-MM-DD\") }\n    ]\n  },\n  { \"type\": \"divider\" },\n  {\n    \"type\": \"section\",\n    \"text\": { \"type\": \"mrkdwn\", \"text\": ($json.highText || \"_No high priority emails today._\") }\n  }\n]\n}}",
+        "text": "={{ $json.highText || \"No high priority emails today.\" }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1712,
+        -48
+      ],
+      "id": "2c487d9b-fdfe-416d-9bd8-4e158c923180",
+      "name": "Send a message high-priorities",
+      "webhookId": "e50f9ca0-79e7-4007-8876-c0bc5186d104",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tPM2eTHg801JxWs3",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A0E3SN5PY",
+          "mode": "list",
+          "cachedResultName": "medium-priorities"
+        },
+        "messageType": "block",
+        "blocksUi": "={{\n[\n  {\n    \"type\": \"header\",\n    \"text\": { \"type\": \"plain_text\", \"text\": \"MEDIUM PRIORITY\", \"emoji\": true }\n  },\n  { \"type\": \"divider\" },\n  {\n    \"type\": \"section\",\n    \"text\": { \"type\": \"mrkdwn\", \"text\": ($json.mediumText || \"No medium priority emails today.\") }\n  }\n]\n}}",
+        "text": "={{ $('Edit Fields').item.json.mediumText }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1920,
+        -48
+      ],
+      "id": "d0e0dd2c-64d4-442e-b982-c0c51f16f12a",
+      "name": "Send a message medium-priorities",
+      "webhookId": "5a41432e-8dc6-4016-ab9e-67baccca02e4",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tPM2eTHg801JxWs3",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A00M7BBAB",
+          "mode": "list",
+          "cachedResultName": "low-priorities"
+        },
+        "messageType": "block",
+        "blocksUi": "={{\n[\n  {\n    \"type\": \"header\",\n    \"text\": { \"type\": \"plain_text\", \"text\": \"LOW PRIORITY\", \"emoji\": true }\n  },\n  { \"type\": \"divider\" },\n  {\n    \"type\": \"section\",\n    \"text\": { \"type\": \"mrkdwn\", \"text\": ($json.lowText || \"No low priority emails today.\") }\n  }\n]\n}}",
+        "text": "={{ $('Edit Fields').item.json.lowText }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2128,
+        -48
+      ],
+      "id": "476c4d51-f1f9-4a23-9693-465ec8f0ca4c",
+      "name": "Send a message low-priorities",
+      "webhookId": "e25c6634-bb4f-40bb-8bed-d61486b1879f",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tPM2eTHg801JxWs3",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1666695853,
+          "mode": "list",
+          "cachedResultName": "Email (A) Low",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=1666695853"
+        },
+        "numberToDelete": 50
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2320,
+        -48
+      ],
+      "id": "54c9b6e1-ec2f-41c2-a81b-f4de8265f686",
+      "name": "Delete Low Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1675894220,
+          "mode": "list",
+          "cachedResultName": "Email (A) Medium",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=1675894220"
+        },
+        "numberToDelete": 50
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2528,
+        -48
+      ],
+      "id": "672ad3d6-3cb5-4b9a-aeb6-b017316540d4",
+      "name": "Delete Medium Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM",
+          "mode": "list",
+          "cachedResultName": "Email (A) Data Stored",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Email (A) High",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cHPLXaHJ92ZHjRJUix0W4L6FcK_uiowRfj9mYP3sapM/edit#gid=0"
+        },
+        "numberToDelete": 50
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2720,
+        -48
+      ],
+      "id": "d5d8b50d-d46c-4506-9e82-68338912f770",
+      "name": "Delete High Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cCezRnmnc02iOzhZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Low Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Low Sheet": {
+      "main": [
+        [
+          {
+            "node": "Read Medium Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Medium Sheet": {
+      "main": [
+        [
+          {
+            "node": "Read High Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read High Sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message high-priorities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message high-priorities": {
+      "main": [
+        [
+          {
+            "node": "Send a message medium-priorities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message medium-priorities": {
+      "main": [
+        [
+          {
+            "node": "Send a message low-priorities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message low-priorities": {
+      "main": [
+        [
+          {
+            "node": "Delete Low Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Low Sheet": {
+      "main": [
+        [
+          {
+            "node": "Delete Medium Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Medium Sheet": {
+      "main": [
+        [
+          {
+            "node": "Delete High Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "40a88702-495f-48a0-8a97-a1d065c5c558",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00db946854f8670ba1a43e64b16256ebb4a5a382846c7b16ddcfbf737ee9b72b"
+  },
+  "id": "pTnc5N7XRhFMMYQo",
+  "tags": []
+}
